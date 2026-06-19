@@ -45,8 +45,6 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/fitlife-gestionpago:latest
             ${{ secrets.DOCKER_USERNAME }}/fitlife-gestionpago:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/fitlife-gestionpago:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/fitlife-gestionpago:buildcache,mode=max
 
   deploy:
     needs: build
