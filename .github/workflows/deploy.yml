@@ -52,7 +52,222 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-      - name: Deploy notification
-        run: |
-          echo "Imagen desplegada: ${{ secrets.DOCKER_USERNAME }}/fitlife-gestionpago:latest"
-          echo "SHA: ${{ github.sha }}"
+      - name: Deploy to EC2 Backend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.BACKEND_EC2_IP }}
+          username: ec2-user
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ec2-user
+            cat > docker-compose.backend.yml << 'EOF'
+            version: '3.8'
+            
+            services:
+              mysql-usuarios:
+                image: mysql:8.0
+                container_name: mysql-usuarios
+                environment:
+                  MYSQL_ROOT_PASSWORD: root
+                  MYSQL_DATABASE: fitlife_usuarios_db
+                networks:
+                  - fitlife-network
+                volumes:
+                  - mysql-usuarios-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+            
+              mysql-reservas:
+                image: mysql:8.0
+                container_name: mysql-reservas
+                environment:
+                  MYSQL_ROOT_PASSWORD: root
+                  MYSQL_DATABASE: fitlife_reservas_db
+                networks:
+                  - fitlife-network
+                volumes:
+                  - mysql-reservas-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+            
+              mysql-pagos:
+                image: mysql:8.0
+                container_name: mysql-pagos
+                environment:
+                  MYSQL_ROOT_PASSWORD: root
+                  MYSQL_DATABASE: fitlife_pagos_db
+                networks:
+                  - fitlife-network
+                volumes:
+                  - mysql-pagos-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+            
+              mysql-notificaciones:
+                image: mysql:8.0
+                container_name: mysql-notificaciones
+                environment:
+                  MYSQL_ROOT_PASSWORD: root
+                  MYSQL_DATABASE: fitlife_notificaciones_db
+                networks:
+                  - fitlife-network
+                volumes:
+                  - mysql-notificaciones-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+            
+              mysql-locations:
+                image: mysql:8.0
+                container_name: mysql-locations
+                environment:
+                  MYSQL_ROOT_PASSWORD: root
+                  MYSQL_DATABASE: fitlife_locations_db
+                networks:
+                  - fitlife-network
+                volumes:
+                  - mysql-locations-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+            
+              rabbitmq:
+                image: rabbitmq:3-management
+                container_name: rabbitmq
+                environment:
+                  RABBITMQ_DEFAULT_USER: guest
+                  RABBITMQ_DEFAULT_PASS: guest
+                networks:
+                  - fitlife-network
+                volumes:
+                  - rabbitmq-data:/var/lib/rabbitmq
+            
+              ms-gateway:
+                image: Mariajose205/fitlife-gateway:latest
+                container_name: ms-gateway
+                ports:
+                  - "8080:8080"
+                environment:
+                  - SPRING_PROFILES_ACTIVE=docker
+                  - SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING=true
+                  - SPRING_MAIN_ALLOW_CIRCULAR_REFERENCES=true
+                networks:
+                  - fitlife-network
+                depends_on:
+                  - ms-usuarios
+                  - ms-reservas
+                  - ms-gestion-pago
+                  - ms-notificaciones
+                  - ms-location
+                restart: always
+            
+              ms-usuarios:
+                image: Mariajose205/fitlife-usuarios:latest
+                container_name: ms-usuarios
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-usuarios:3306/fitlife_usuarios_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+                  - SPRING_DATASOURCE_USERNAME=root
+                  - SPRING_DATASOURCE_PASSWORD=root
+                networks:
+                  - fitlife-network
+                depends_on:
+                  mysql-usuarios:
+                    condition: service_healthy
+                restart: always
+            
+              ms-reservas:
+                image: Mariajose205/fitlife-reservas:latest
+                container_name: ms-reservas
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-reservas:3306/fitlife_reservas_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+                  - SPRING_DATASOURCE_USERNAME=root
+                  - SPRING_DATASOURCE_PASSWORD=root
+                networks:
+                  - fitlife-network
+                depends_on:
+                  mysql-reservas:
+                    condition: service_healthy
+                restart: always
+            
+              ms-gestion-pago:
+                image: Mariajose205/fitlife-gestionpago:latest
+                container_name: ms-gestion-pago
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-pagos:3306/fitlife_pagos_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+                  - SPRING_DATASOURCE_USERNAME=root
+                  - SPRING_DATASOURCE_PASSWORD=root
+                  - SPRING_RABBITMQ_HOST=rabbitmq
+                  - SPRING_RABBITMQ_PORT=5672
+                  - SPRING_RABBITMQ_USERNAME=guest
+                  - SPRING_RABBITMQ_PASSWORD=guest
+                networks:
+                  - fitlife-network
+                depends_on:
+                  mysql-pagos:
+                    condition: service_healthy
+                  rabbitmq:
+                    condition: service_started
+                restart: always
+            
+              ms-notificaciones:
+                image: Mariajose205/fitlife-notificaciones:latest
+                container_name: ms-notificaciones
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-notificaciones:3306/fitlife_notificaciones_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+                  - SPRING_DATASOURCE_USERNAME=root
+                  - SPRING_DATASOURCE_PASSWORD=root
+                  - SPRING_RABBITMQ_HOST=rabbitmq
+                  - SPRING_RABBITMQ_PORT=5672
+                  - SPRING_RABBITMQ_USERNAME=guest
+                  - SPRING_RABBITMQ_PASSWORD=guest
+                networks:
+                  - fitlife-network
+                depends_on:
+                  mysql-notificaciones:
+                    condition: service_healthy
+                  rabbitmq:
+                    condition: service_started
+                restart: always
+            
+              ms-location:
+                image: Mariajose205/fitlife-location:latest
+                container_name: ms-location
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-locations:3306/fitlife_locations_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+                  - SPRING_DATASOURCE_USERNAME=root
+                  - SPRING_DATASOURCE_PASSWORD=root
+                networks:
+                  - fitlife-network
+                depends_on:
+                  mysql-locations:
+                    condition: service_healthy
+                restart: always
+            
+            networks:
+              fitlife-network:
+                driver: bridge
+            
+            volumes:
+              mysql-usuarios-data:
+              mysql-reservas-data:
+              mysql-pagos-data:
+              mysql-notificaciones-data:
+              mysql-locations-data:
+              rabbitmq-data:
+            EOF
+            docker compose -f docker-compose.backend.yml pull
+            docker compose -f docker-compose.backend.yml up -d
+            docker image prune -f
