@@ -156,7 +156,7 @@ jobs:
                   - rabbitmq-data:/var/lib/rabbitmq
             
               ms-gateway:
-                image: Mariajose205/fitlife-gateway:latest
+                image: mariacarrero/fitlife-gateway:latest
                 container_name: ms-gateway
                 ports:
                   - "8080:8080"
@@ -175,7 +175,7 @@ jobs:
                 restart: always
             
               ms-usuarios:
-                image: Mariajose205/fitlife-usuarios:latest
+                image: mariacarrero/fitlife-usuarios:latest
                 container_name: ms-usuarios
                 environment:
                   - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-usuarios:3306/fitlife_usuarios_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -189,7 +189,7 @@ jobs:
                 restart: always
             
               ms-reservas:
-                image: Mariajose205/fitlife-reservas:latest
+                image: mariacarrero/fitlife-reservas:latest
                 container_name: ms-reservas
                 environment:
                   - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-reservas:3306/fitlife_reservas_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -203,7 +203,7 @@ jobs:
                 restart: always
             
               ms-gestion-pago:
-                image: Mariajose205/fitlife-gestionpago:latest
+                image: mariacarrero/fitlife-gestionpago:latest
                 container_name: ms-gestion-pago
                 environment:
                   - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-pagos:3306/fitlife_pagos_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -223,7 +223,7 @@ jobs:
                 restart: always
             
               ms-notificaciones:
-                image: Mariajose205/fitlife-notificaciones:latest
+                image: mariacarrero/fitlife-notificaciones:latest
                 container_name: ms-notificaciones
                 environment:
                   - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-notificaciones:3306/fitlife_notificaciones_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -243,7 +243,7 @@ jobs:
                 restart: always
             
               ms-location:
-                image: Mariajose205/fitlife-location:latest
+                image: mariacarrero/fitlife-location:latest
                 container_name: ms-location
                 environment:
                   - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-locations:3306/fitlife_locations_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
